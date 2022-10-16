@@ -4,6 +4,8 @@ import serial.tools.list_ports
 
 from main_window import MainWindow
 from device import Device
+from fure_transform import Spectr
+from serial.tools import list_ports
 
 import time
 import numpy as np
@@ -18,6 +20,7 @@ class Controller:
 
         # device
         self.device = Device()
+        self.fast_fure = Spectr()
 
         # fps stats
         self.fps_timer = QTimer()
@@ -38,6 +41,7 @@ class Controller:
         # self.acquisition_worker.finished.connect(self.acquisition_thread.deleteLater)
         # self.acquisition_thread.finished.connect(self.acquisition_worker.deleteLater)
         self.acquisition_worker.data_ready.connect(self.data_ready_callback)
+        #self.acquisition_worker.data_ready_spectr.connect(self.data_spectr_ready_callback)
         self.acquisition_thread.start()
 
         # default timebase
@@ -46,7 +50,19 @@ class Controller:
         # on app exit
         self.app.aboutToQuit.connect(self.on_app_exit)
 
+    def getport(self):
+        VID = 0x0483 #1155
+        PID = 0x5740 #22336
+        device_list = list_ports.comports()
+        for device in device_list:
+            if device.vid == VID and device.pid == PID:
+                return device.device
+        raise OSError("device not found")
+
     def run_app(self):
+        if self.getport() != "device not found":
+            self.device.connect(self.getport())
+            self.oscilloscope_continuous_run()
         self.main_window.show()
         return self.app.exec_()
 
@@ -62,7 +78,7 @@ class Controller:
         self.device.timebase = timebase
         if self.is_device_connected():
             self.device.write_timebase()
-        # adjust timebase in the screen
+        # adjust timebase in the osc_screen
         seconds_per_sample = (
             float(timebase.split()[0])
             / 10
@@ -71,10 +87,10 @@ class Controller:
         self.data_time_array = (
             np.arange(0, self.device.BUFFER_SIZE) * seconds_per_sample
         )
-        self.main_window.screen.setXRange(
+        self.main_window.osc_screen.setXRange(
             0, self.device.BUFFER_SIZE * seconds_per_sample, padding=0.02
         )
-        self.main_window.screen.setYRange(0, 3.3)
+        self.main_window.osc_screen.setYRange(0, 3.3)
 
     def set_trigger_state(self, on):
         self.device.trigger_on = on
@@ -147,14 +163,18 @@ class Controller:
         curr_time = time.time()
         self.spf = 0.9 * (curr_time - self.timestamp_last_capture) + 0.1 * self.spf
         self.timestamp_last_capture = curr_time
-        self.main_window.screen.update_ch(
+        self.main_window.osc_screen.update_ch(
             self.data_time_array, self.acquisition_worker.data
         )
+        magnitude, freq = self.fast_fure.get_spectr_buff(self.acquisition_worker.data)
+        self.main_window.spectr_screen.update_ch(freq, magnitude)
+
         time.sleep(0.01)
         if self.continuous_acquisition == True:
             self.worker_wait_condition.notify_one()
         else:
             print("self.continuous_acquisition == False")
+
 
     def on_app_exit(self):
         print("exiting")
@@ -164,7 +184,7 @@ class AcquisitionWorker(QObject):
 
     finished = Signal()
     data_ready = Signal()
-
+    
     def __init__(self, wait_condition, device, parent=None):
         super().__init__(parent=parent)
         self.wait_condition = wait_condition

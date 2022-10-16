@@ -1,3 +1,6 @@
+from curses.panel import bottom_panel
+from tkinter import CENTER
+from tkinter.tix import MAX
 from PySide6.QtWidgets import (
     QComboBox,
     QFrame,
@@ -27,7 +30,7 @@ class OscilloscopeScreen(pg.PlotWidget):
 
         self.pen_ch1 = pg.mkPen(color="b", width=1)
 
-        self.plot_ch([0, 1], [1.65, 1.65])
+        self.plot_ch([0, 1], [0, 0])
 
     def plot_ch(self, x, y, ch=1):
         self.data_line_ch = self.plot(x, y, pen=self.pen_ch1)
@@ -35,6 +38,30 @@ class OscilloscopeScreen(pg.PlotWidget):
     def update_ch(self, x, y, ch=1):
         self.data_line_ch.setData(x, y)
 
+class SpectrScreen(pg.PlotWidget):
+    def __init__(self, parent=None, plotItem=None, **kargs):
+        super().__init__(parent=parent, background="w", plotItem=plotItem, **kargs)
+
+
+        styles = {"color": "k", "font-size": "12px"}
+        self.setLabel("left", "V", **styles)
+        self.setLabel("bottom", "s", **styles)
+
+        self.showGrid(x=True, y=True)
+        self.setXRange(0, 12000, padding=0.02)
+        self.setYRange(0, 1, padding=0.02)
+
+        self.pen_ch1 = pg.mkPen(color="r", width=1)
+        self.pen_ch2 = pg.mkPen(color="black", width=1)
+
+        self.plot_ch([0, 400], [0, 0])
+
+    def plot_ch(self, x, y, ch=1):
+        self.data_line_ch = self.plot(x, y, pen=self.pen_ch1)
+        self.data_line_ch = self.plot(x, y, pen=self.pen_ch1)
+
+    def update_ch(self, x, y, ch=1):
+        self.data_line_ch.setData(x, y)
 
 class ChannelBox(QGroupBox):
     def __init__(self, title: str, parent=None):
@@ -241,12 +268,23 @@ class MainWindow(QMainWindow):
     def setupUi(self):
         self.setWindowTitle("stm32")
 
-        self.screen = OscilloscopeScreen()
+        self.screen_layoute = QVBoxLayout()
+        self.content_layout = QHBoxLayout()
+
+
+
+        self.osc_screen = OscilloscopeScreen()
+        self.screen_layoute.addWidget(self.osc_screen)
+
+        self.spectr_screen = SpectrScreen()
+        self.screen_layoute.addWidget(self.spectr_screen)
+
         self.control_panel = ControlPanel(self.controller)
 
-        self.content_layout = QHBoxLayout()
-        self.content_layout.addWidget(self.screen)
+        self.content_layout.addLayout(self.screen_layoute)
         self.content_layout.addWidget(self.control_panel)
 
         self.setCentralWidget(QWidget())
         self.centralWidget().setLayout(self.content_layout)
+
+        self.setGeometry(0, 0, 2560, 1000)
