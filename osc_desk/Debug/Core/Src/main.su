@@ -1,0 +1,8 @@
+../Drivers/CMSIS/Include/core_cm3.h:1511:22:__NVIC_EnableIRQ	16	static
+../Core/Src/main.c:75:13:gpio_pin_mode	16	static
+../Core/Src/main.c:87:13:Gpio_Init	8	static
+../Core/Src/main.c:95:13:adc_init	8	static,ignoring_inline_asm
+../Core/Src/main.c:148:6:DMA1_Channel1_IRQHandler	16	static
+../Core/Src/main.c:174:5:main	16	static
+../Core/Src/main.c:251:6:SystemClock_Config	88	static
+../Core/Src/main.c:297:6:Error_Handler	4	static,ignoring_inline_asm
